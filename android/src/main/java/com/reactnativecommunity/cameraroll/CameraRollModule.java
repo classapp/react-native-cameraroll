@@ -357,12 +357,13 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
     int longitudeIndex = media.getColumnIndex(Images.Media.LONGITUDE);
     int latitudeIndex = media.getColumnIndex(Images.Media.LATITUDE);
     int dataIndex = media.getColumnIndex(MediaStore.MediaColumns.DATA);
+    int orientationIndex = media.getColumnIndex(MediaStore.MediaColumns.ORIENTATION);
 
     for (int i = 0; i < limit && !media.isAfterLast(); i++) {
       WritableMap edge = new WritableNativeMap();
       WritableMap node = new WritableNativeMap();
       boolean imageInfoSuccess =
-          putImageInfo(resolver, media, node, idIndex, widthIndex, heightIndex, dataIndex, mimeTypeIndex);
+          putImageInfo(resolver, media, node, idIndex, widthIndex, heightIndex, dataIndex, mimeTypeIndex, orientationIndex);
       if (imageInfoSuccess) {
         putBasicNodeInfo(media, node, mimeTypeIndex, groupNameIndex, dateTakenIndex);
         putLocationInfo(media, node, longitudeIndex, latitudeIndex);
@@ -398,7 +399,8 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
       int widthIndex,
       int heightIndex,
       int dataIndex,
-      int mimeTypeIndex) {
+      int mimeTypeIndex,
+      int orientationIndex) {
     WritableMap image = new WritableNativeMap();
     Uri photoUri = Uri.parse("file://" + media.getString(dataIndex));
     File file = new File(media.getString(dataIndex));
@@ -409,6 +411,9 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
     float height = media.getInt(heightIndex);
 
     String mimeType = media.getString(mimeTypeIndex);
+
+    String orientation = media.getString(orientationIndex);
+    image.putString("orientation", orientation);
 
     if (mimeType != null
         && mimeType.startsWith("video")) {
