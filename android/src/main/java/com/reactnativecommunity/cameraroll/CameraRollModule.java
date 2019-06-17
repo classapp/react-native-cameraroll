@@ -22,6 +22,7 @@ import android.provider.MediaStore.Images;
 import android.text.TextUtils;
 
 import android.media.ExifInterface;
+import android.media.MediaMetadataRetriever;
 
 import com.facebook.common.logging.FLog;
 import com.facebook.react.bridge.GuardedAsyncTask;
@@ -437,6 +438,12 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
 
     int orientation = media.getInt(orientationIndex);
     image.putInt("orientation", orientation);
+
+    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+    retriever.setDataSource(photoUri.getPath());
+    String metaRotation = retriever.extractMetadata(METADATA_KEY_VIDEO_ROTATION);
+    int rotation = metaRotation == null ? 0 : Integer.parseInt(metaRotation);
+    image.putInt("rotation", rotation);
 
     // int currentRotation = 0;
     // boolean isVertical = true;
