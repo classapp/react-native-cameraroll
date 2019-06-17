@@ -21,6 +21,8 @@ import android.provider.MediaStore;
 import android.provider.MediaStore.Images;
 import android.text.TextUtils;
 
+import android.media.ExifInterface;
+
 import com.facebook.common.logging.FLog;
 import com.facebook.react.bridge.GuardedAsyncTask;
 import com.facebook.react.bridge.JSApplicationIllegalArgumentException;
@@ -77,7 +79,7 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
     Images.Media.LONGITUDE,
     Images.Media.LATITUDE,
     MediaStore.MediaColumns.DATA,
-    MediaStore.MediaColumns.ORIENTATION,
+    MediaStore.Images.ImageColumns.ORIENTATION
   };
 
   private static final String SELECTION_BUCKET = Images.Media.BUCKET_DISPLAY_NAME + " = ?";
@@ -314,7 +316,7 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
           mPromise.reject(ERROR_UNABLE_TO_LOAD, "Could not get media");
         } else {
           try {
-            putEdges(resolver, media, response, mFirst);
+            putEdges(resolver, media, response, mFirst, mContext);
             putPageInfo(media, response, mFirst);
           } finally {
             media.close();
@@ -346,9 +348,11 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
       ContentResolver resolver,
       Cursor media,
       WritableMap response,
-      int limit) {
+      int limit,
+      Context context) {
     WritableArray edges = new WritableNativeArray();
     media.moveToFirst();
+    int orientationIndex = media.getColumnIndex(MediaStore.Images.ImageColumns.ORIENTATION);
     int idIndex = media.getColumnIndex(Images.Media._ID);
     int mimeTypeIndex = media.getColumnIndex(Images.Media.MIME_TYPE);
     int groupNameIndex = media.getColumnIndex(Images.Media.BUCKET_DISPLAY_NAME);
@@ -358,13 +362,12 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
     int longitudeIndex = media.getColumnIndex(Images.Media.LONGITUDE);
     int latitudeIndex = media.getColumnIndex(Images.Media.LATITUDE);
     int dataIndex = media.getColumnIndex(MediaStore.MediaColumns.DATA);
-    int orientationIndex = media.getColumnIndex(MediaStore.MediaColumns.ORIENTATION);
 
     for (int i = 0; i < limit && !media.isAfterLast(); i++) {
       WritableMap edge = new WritableNativeMap();
       WritableMap node = new WritableNativeMap();
       boolean imageInfoSuccess =
-          putImageInfo(resolver, media, node, idIndex, widthIndex, heightIndex, dataIndex, mimeTypeIndex, orientationIndex);
+          putImageInfo(resolver, media, node, idIndex, widthIndex, heightIndex, dataIndex, mimeTypeIndex, orientationIndex, context);
       if (imageInfoSuccess) {
         putBasicNodeInfo(media, node, mimeTypeIndex, groupNameIndex, dateTakenIndex);
         putLocationInfo(media, node, longitudeIndex, latitudeIndex);
@@ -392,6 +395,22 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
     node.putDouble("timestamp", media.getLong(dateTakenIndex) / 1000d);
   }
 
+  // private static int getOrientation(Context context, Uri photoUri) {
+  //   Cursor cursor = context.getContentResolver().query(photoUri,
+  //           new String[]{MediaStore.Images.ImageColumns.ORIENTATION}, null, null, null);
+
+  //   if (cursor.getCount() != 1) {
+  //       cursor.close();
+  //       return -1;
+  //   }
+
+  //   cursor.moveToFirst();
+  //   int orientation = cursor.getInt(0);
+  //   cursor.close();
+  //   cursor = null;
+  //   return orientation;
+  // }
+
   private static boolean putImageInfo(
       ContentResolver resolver,
       Cursor media,
@@ -401,7 +420,8 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
       int heightIndex,
       int dataIndex,
       int mimeTypeIndex,
-      int orientationIndex) {
+      int orientationIndex,
+      Context context) {
     WritableMap image = new WritableNativeMap();
     Uri photoUri = Uri.parse("file://" + media.getString(dataIndex));
     File file = new File(media.getString(dataIndex));
@@ -413,8 +433,41 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
 
     String mimeType = media.getString(mimeTypeIndex);
 
-    String orientation = media.getString(orientationIndex);
-    image.putString("orientation", orientation);
+    // int orientation = getOrientation(context, photoUri);
+
+    int orientation = media.getInt(orientationIndex);
+    image.putInt("orientation", orientation);
+
+    // int currentRotation = 0;
+    // boolean isVertical = true;
+    // int ori = -1;
+    // try {
+    //   ExifInterface exif = new ExifInterface(photoUri.getPath());
+    //   ori = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+    //   switch (ori) {
+    //     case ExifInterface.ORIENTATION_ROTATE_270:
+    //       isVertical = false;
+    //       currentRotation = 270;
+    //       break;
+    //     case ExifInterface.ORIENTATION_ROTATE_90:
+    //       isVertical = false;
+    //       currentRotation = 90;
+    //       break;
+    //     case ExifInterface.ORIENTATION_ROTATE_180:
+    //       currentRotation = 180;
+    //       break;
+    //   }
+    // } catch (IOException e) {
+    //   e.printStackTrace();
+    //   image.putString("error", e.getMessage());
+    //   // mCallback.invoke(response);
+    //   // mCallback = null;
+    //   // return;
+    // }
+
+    // image.putInt("originalRotation", currentRotation);
+    // image.putBoolean("isVertical", isVertical);
+    // image.putInt("ori", ori);
 
     if (mimeType != null
         && mimeType.startsWith("video")) {
@@ -432,11 +485,11 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
                 Integer.parseInt(
                     retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
           }
-          int timeInMillisec =
-              Integer.parseInt(
+          double timeInMillisec =
+              Double.parseDouble(
                   retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
-          int playableDuration = timeInMillisec / 1000;
-          image.putInt("playableDuration", playableDuration);
+          double playableDuration = timeInMillisec / 1000;
+          image.putDouble("playableDuration", playableDuration);
         } catch (NumberFormatException e) {
           FLog.e(
               ReactConstants.TAG,
