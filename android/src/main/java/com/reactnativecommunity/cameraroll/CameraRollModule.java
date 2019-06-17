@@ -21,7 +21,7 @@ import android.provider.MediaStore;
 import android.provider.MediaStore.Images;
 import android.text.TextUtils;
 
-import android.media.ExifInterface;
+// import android.media.ExifInterface;
 import android.media.MediaMetadataRetriever;
 
 import com.facebook.common.logging.FLog;
@@ -317,7 +317,7 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
           mPromise.reject(ERROR_UNABLE_TO_LOAD, "Could not get media");
         } else {
           try {
-            putEdges(resolver, media, response, mFirst, mContext);
+            putEdges(resolver, media, response, mFirst);
             putPageInfo(media, response, mFirst);
           } finally {
             media.close();
@@ -349,8 +349,7 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
       ContentResolver resolver,
       Cursor media,
       WritableMap response,
-      int limit,
-      Context context) {
+      int limit) {
     WritableArray edges = new WritableNativeArray();
     media.moveToFirst();
     int orientationIndex = media.getColumnIndex(MediaStore.Images.ImageColumns.ORIENTATION);
@@ -368,7 +367,7 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
       WritableMap edge = new WritableNativeMap();
       WritableMap node = new WritableNativeMap();
       boolean imageInfoSuccess =
-          putImageInfo(resolver, media, node, idIndex, widthIndex, heightIndex, dataIndex, mimeTypeIndex, orientationIndex, context);
+          putImageInfo(resolver, media, node, idIndex, widthIndex, heightIndex, dataIndex, mimeTypeIndex, orientationIndex);
       if (imageInfoSuccess) {
         putBasicNodeInfo(media, node, mimeTypeIndex, groupNameIndex, dateTakenIndex);
         putLocationInfo(media, node, longitudeIndex, latitudeIndex);
@@ -396,22 +395,6 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
     node.putDouble("timestamp", media.getLong(dateTakenIndex) / 1000d);
   }
 
-  // private static int getOrientation(Context context, Uri photoUri) {
-  //   Cursor cursor = context.getContentResolver().query(photoUri,
-  //           new String[]{MediaStore.Images.ImageColumns.ORIENTATION}, null, null, null);
-
-  //   if (cursor.getCount() != 1) {
-  //       cursor.close();
-  //       return -1;
-  //   }
-
-  //   cursor.moveToFirst();
-  //   int orientation = cursor.getInt(0);
-  //   cursor.close();
-  //   cursor = null;
-  //   return orientation;
-  // }
-
   private static boolean putImageInfo(
       ContentResolver resolver,
       Cursor media,
@@ -421,8 +404,7 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
       int heightIndex,
       int dataIndex,
       int mimeTypeIndex,
-      int orientationIndex,
-      Context context) {
+      int orientationIndex) {
     WritableMap image = new WritableNativeMap();
     Uri photoUri = Uri.parse("file://" + media.getString(dataIndex));
     File file = new File(media.getString(dataIndex));
@@ -434,23 +416,14 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
 
     String mimeType = media.getString(mimeTypeIndex);
 
-    // int orientation = getOrientation(context, photoUri);
-
     int orientation = media.getInt(orientationIndex);
     image.putInt("orientation", orientation);
 
-    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-    retriever.setDataSource(photoUri.getPath());
-    String metaRotation = retriever.extractMetadata(METADATA_KEY_VIDEO_ROTATION);
-    int rotation = metaRotation == null ? 0 : Integer.parseInt(metaRotation);
-    image.putInt("rotation", rotation);
-
     // int currentRotation = 0;
     // boolean isVertical = true;
-    // int ori = -1;
     // try {
     //   ExifInterface exif = new ExifInterface(photoUri.getPath());
-    //   ori = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+    //   int ori = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
     //   switch (ori) {
     //     case ExifInterface.ORIENTATION_ROTATE_270:
     //       isVertical = false;
@@ -474,14 +447,17 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
 
     // image.putInt("originalRotation", currentRotation);
     // image.putBoolean("isVertical", isVertical);
-    // image.putInt("ori", ori);
 
+    int rotation = 0;
     if (mimeType != null
         && mimeType.startsWith("video")) {
       try {
         AssetFileDescriptor photoDescriptor = resolver.openAssetFileDescriptor(photoUri, "r");
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
         retriever.setDataSource(photoDescriptor.getFileDescriptor());
+        String metaRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
+        rotation = metaRotation == null ? 0 : Integer.parseInt(metaRotation);
+        image.putInt("rotation", rotation);
 
         try {
           if (width <= 0 || height <= 0) {
@@ -530,8 +506,15 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
         return false;
       }
     }
-    image.putDouble("width", width);
-    image.putDouble("height", height);
+
+    if (rotation == 90) {
+      image.putDouble("width", height);
+      image.putDouble("height", width);
+    } else {
+      image.putDouble("width", width);
+      image.putDouble("height", height);
+    }
+
     node.putMap("image", image);
 
     return true;
