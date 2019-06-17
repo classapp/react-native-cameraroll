@@ -76,7 +76,8 @@ public class CameraRollModule extends ReactContextBaseJavaModule {
     MediaStore.MediaColumns.HEIGHT,
     Images.Media.LONGITUDE,
     Images.Media.LATITUDE,
-    MediaStore.MediaColumns.DATA
+    MediaStore.MediaColumns.DATA,
+    MediaStore.MediaColumns.ORIENTATION,
   };
 
   private static final String SELECTION_BUCKET = Images.Media.BUCKET_DISPLAY_NAME + " = ?";
