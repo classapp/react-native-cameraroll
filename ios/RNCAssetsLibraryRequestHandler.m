@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#import "RNCAssetsLibraryRequestHandler.h"
+#import "RCTAssetsLibraryRequestHandler.h"
 
 #import <stdatomic.h>
 #import <dlfcn.h>
@@ -18,11 +18,11 @@
 #import <React/RCTNetworking.h>
 #import <React/RCTUtils.h>
 
-@implementation RNCAssetsLibraryRequestHandler
+@implementation RCTAssetsLibraryRequestHandler
 
 RCT_EXPORT_MODULE()
 
-#pragma mark - RNCURLRequestHandler
+#pragma mark - RCTURLRequestHandler
 
 - (BOOL)canHandleRequest:(NSURLRequest *)request
 {
