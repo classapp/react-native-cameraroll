@@ -15,14 +15,15 @@
 #import <MobileCoreServices/MobileCoreServices.h>
 
 #import <React/RCTBridge.h>
-#import <React/RCTNetworking.h>
+// #import <React/RCTNetworking.h>
 #import <React/RCTUtils.h>
 
 @implementation RNCAssetsLibraryRequestHandler
 
 RCT_EXPORT_MODULE()
 
-#pragma mark - RNCURLRequestHandler
+#pragma mark - RCTURLRequestHandler
+// #pragma mark - RNCURLRequestHandler
 
 - (BOOL)canHandleRequest:(NSURLRequest *)request
 {
